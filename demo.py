@@ -1,45 +1,14 @@
-from os import path
-import sys
-import xml.etree.ElementTree as ET
+import uscode
+import boolean
 
+usc = uscode.USCode('./data/uscode/')
 
-ns_prefix = '{http://xml.house.gov/schemas/uslm/1.0}'
-new_line_tags = {'section', 'subsection', 'paragraph', 'subparagraph', 'clause', 'subclause'}
-xml_folder = '/users/zhihaoliu/desktop/uscode/xml'
+# x = usc.find_section_by_id('1', '1')
+# print(x)
 
+# x = usc.search_sections_fulltext('bilateral and multilateral')
+# print([k.identifier[len('/us/usc/'):] for k in x if k.identifier])
 
-def prefix(tag):
-    return ns_prefix + tag
-
-
-def deprefix(tag):
-    return tag[len(ns_prefix):]
-
-
-def is_new_line(tag):
-    return deprefix(tag) in new_line_tags
-
-
-def find_section(title, section):
-    file_path = path.join(xml_folder, 'usc%s.xml' % title)
-    tree = ET.parse(file_path)
-    root = tree.getroot()
-
-    str_builder = []
-    elem = root.find('.//%s[@identifier="/us/usc/t%s/s%s"]' % (prefix('section'), title, section))
-    for c in elem.iter():
-        if str_builder and is_new_line(c.tag):
-            str_builder.append('\n')
-        if c.text:
-            str_builder.append(c.text)
-            str_builder.append(' ')
-
-    return ''.join(str_builder)
-
-
-
-title = sys.argv[1]
-section = sys.argv[2]
-
-content = find_section(title, section)
-print(content)
+x = usc.search_all_sections_boolean('copyright AND is AND NOT legal')
+for k in x:
+    print("title: %s \tsection:%s" % (k.title_id, k.section_id))
