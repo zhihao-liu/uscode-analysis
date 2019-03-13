@@ -47,19 +47,16 @@ class Section:
 
         return ''.join(str_builder)
 
-    @property
-    def identifier(self):
-        return self.node.attrib.get('identifier')
+    def get_attrib(self, key):
+        return self.node.attrib.get(key)
 
     @property
-    def title_id(self):
-        identifier = self.identifier
-        return identifier and identifier.split('/')[-2][1:]
-
-    @property
-    def section_id(self):
-        identifier = self.identifier
-        return identifier and identifier.split('/')[-1][1:]
+    def location(self):
+        identifier = self.get_attrib('identifier')
+        if not identifier:
+            return None
+        parts = identifier.split('/')
+        return parts[-2][1:], parts[-1][1:]
 
 
 # wrapper of the whole US Code with search functions
@@ -76,14 +73,14 @@ class USCode:
             self.titles[title_id] = ET.parse(os.path.join(self.xml_dir, 'usc%s.xml' % title_id))
         return self.titles[title_id]
 
-    def find_section_by_id(self, title_id, section_id):
+    def find_section(self, title_id, section_id):
         title = self.get_title(title_id)
         if not title:
             return None
         node = title.getroot().find('.//%s[@identifier="/us/usc/t%s/s%s"]' % (prefix_tag('section'), title_id, section_id))
         return node and Section(node)
 
-    def search_sections_fulltext(self, title_id, text):
+    def search_title_fulltext(self, title_id, text):
         results = []
         title = self.get_title(title_id)
         for sec_node in title.getroot().iter(prefix_tag('section')):
@@ -91,7 +88,7 @@ class USCode:
                 results.append(Section(sec_node))
         return results
 
-    def search_sections_boolean(self, title_id, query):
+    def search_title_boolean(self, title_id, query):
         title = self.get_title(title_id)
         expr = boolean.parse(query, simplify=True)
 
@@ -102,10 +99,10 @@ class USCode:
                 results.append(Section(sec_node))
         return results
 
-    def search_all_sections_fulltext(self, text):
-        all_results = (self.search_sections_fulltext(title_id, text) for title_id in self.titles)
+    def search_all_fulltext(self, text):
+        all_results = (self.search_title_fulltext(title_id, text) for title_id in self.titles)
         return list(itertools.chain.from_iterable(all_results))
 
-    def search_all_sections_boolean(self, query):
-        all_results = (self.search_sections_boolean(title_id, query) for title_id in self.titles)
+    def search_all_boolean(self, query):
+        all_results = (self.search_title_boolean(title_id, query) for title_id in self.titles)
         return list(itertools.chain.from_iterable(all_results))

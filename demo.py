@@ -1,14 +1,20 @@
-import uscode
+import sys
 import boolean
+
+import uscode
+
 
 usc = uscode.USCode('./data/uscode/')
 
-# x = usc.find_section_by_id('1', '1')
-# print(x)
+option = sys.argv[1]
+if option == 'section':
+    title_id, section_id = sys.argv[2:4]
+    section = usc.find_section(title_id, section_id)
+    print(section.to_string() if section else "Not found.")
 
-# x = usc.search_sections_fulltext('bilateral and multilateral')
-# print([k.identifier[len('/us/usc/'):] for k in x if k.identifier])
-
-x = usc.search_all_sections_boolean('copyright AND is AND NOT legal')
-for k in x:
-    print("title: %s \tsection:%s" % (k.title_id, k.section_id))
+elif option in ['fulltext', 'boolean']:
+    search = usc.search_all_fulltext if option == 'fulltext' else usc.search_all_boolean
+    results = search(sys.argv[2])
+    for section in results:
+        if section.location:
+            print("title: %s\tsection: %s" % section.location)
