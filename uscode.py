@@ -22,23 +22,26 @@ def is_new_line(tag):
     return deprefix_tag(tag) in new_line_tags
 
 
-def contains_text(node, text):
+def contains_text(elem, text):
     text = text.lower()
-    return any(child.text and text in child.text.lower() for child in node.iter(prefix_tag('content')))
+    return any(child.text and text in child.text.lower() for child in elem.iter(prefix_tag('content')))
 
 
 def booleanify(val):
     return boolean.TRUE if val else boolean.FALSE
 
 
-# wrapper of a section node
+# wrapper of a section element
 class Section:
-    def __init__(self, node):
-        self.node = node
+    def __init__(self, elem):
+        self.elem = elem
+
+    def get_attrib(self, key):
+        return self.elem.attrib.get(key)
 
     def to_string(self):
         str_builder = []
-        for child in self.node.iter():
+        for child in self.elem.iter():
             if str_builder and is_new_line(child.tag):
                 str_builder.append('\n')
             if child.text:
@@ -47,15 +50,12 @@ class Section:
 
         return ''.join(str_builder)
 
-    def get_attrib(self, key):
-        return self.node.attrib.get(key)
-
     @property
     def location(self):
-        identifier = self.get_attrib('identifier')
-        if not identifier:
+        key = self.get_attrib('identifier')
+        if not key:
             return None
-        parts = identifier.split('/')
+        parts = key.split('/')
         return parts[-2][1:], parts[-1][1:]
 
 
@@ -73,19 +73,26 @@ class USCode:
             self.titles[title_id] = ET.parse(os.path.join(self.xml_dir, 'usc%s.xml' % title_id))
         return self.titles[title_id]
 
+    def get_all_sections(self):
+        sections = []
+        for title_id in self.titles:
+            title = self.get_title(title_id)
+            sections += (Section(elem) for elem in title.getroot().iter(prefix_tag('section')))
+        return sections
+
     def find_section(self, title_id, section_id):
         title = self.get_title(title_id)
         if not title:
             return None
-        node = title.getroot().find('.//%s[@identifier="/us/usc/t%s/s%s"]' % (prefix_tag('section'), title_id, section_id))
-        return node and Section(node)
+        elem = title.getroot().find('.//%s[@identifier="/us/usc/t%s/s%s"]' % (prefix_tag('section'), title_id, section_id))
+        return elem and Section(elem)
 
     def search_title_fulltext(self, title_id, text):
         results = []
         title = self.get_title(title_id)
-        for sec_node in title.getroot().iter(prefix_tag('section')):
-            if contains_text(sec_node, text):
-                results.append(Section(sec_node))
+        for sec_elem in title.getroot().iter(prefix_tag('section')):
+            if contains_text(sec_elem, text):
+                results.append(Section(sec_elem))
         return results
 
     def search_title_boolean(self, title_id, query):
@@ -93,10 +100,10 @@ class USCode:
         expr = boolean.parse(query, simplify=True)
 
         results = []
-        for sec_node in title.getroot().iter(prefix_tag('section')):
-            boolean_map = {sym: booleanify(contains_text(sec_node, sym.obj)) for sym in expr.symbols}
+        for sec_elem in title.getroot().iter(prefix_tag('section')):
+            boolean_map = {sym: booleanify(contains_text(sec_elem, sym.obj)) for sym in expr.symbols}
             if expr.subs(boolean_map, simplify=True) == boolean.TRUE:
-                results.append(Section(sec_node))
+                results.append(Section(sec_elem))
         return results
 
     def search_all_fulltext(self, text):
