@@ -1,6 +1,7 @@
 import logging
-from uscode import Section, USCode, prefix_tag
 from collections import defaultdict
+from uscode import Section, USCode
+import util
 
 
 class CitationNode:
@@ -9,33 +10,44 @@ class CitationNode:
         self.indegree = 0
         self.outedges = defaultdict(int)
 
+    @property
+    def outdegree(self):
+        return len(self.outedges)
+
 
 class CitationNetwork:
-    def __init__(self, usc):
+    def __init__(self, sections):
         self.nodes = {}
         self.n_edges = 0
 
-        self.init_nodes(usc)
+        self.init_nodes(sections)
         self.build_network()
 
-    def init_nodes(self, usc):
-        logging.info('Intializing nodes...')
-        for sec in usc.get_all_sections():
-            key = sec.get_attrib('identifier')
-            if not key:
+    def init_nodes(self, sections):
+        logging.info("Intializing nodes...")
+        for sec in sections:
+            sec_id = sec.get_attrib('identifier')
+            if not (sec_id and sec_id.startswith('/us/usc')):
                 continue
-            self.nodes[key] = CitationNode(sec)
+            self.nodes[sec_id] = CitationNode(sec)
 
     def build_network(self):
-        logging.info('Building network...')
+        logging.info("Building network...")
         for node in self.nodes.values():
-            for ref in node.section.elem.iter(prefix_tag('ref')):
-                ref_key = ref.attrib.get('href')
-                if ref_key in self.nodes:
-                    self.add_edge(node, self.nodes[ref_key])
+            for ref_elem in node.section.elem.iter(util.prefix_tag('ref')):
+                ref_id = ref_elem.attrib.get('href')
+                if not ref_id or not util.is_uscode_id(ref_id):
+                    continue
+
+                ref_id = util.id_level(ref_id, 5) # trim the identifier to the section level
+                if ref_id in self.nodes:
+                    self.add_edge(node, self.nodes[ref_id])
 
     def add_edge(self, src, dst):
         if dst not in src.outedges:
             self.n_edges += 1
             dst.indegree += 1
         src.outedges[dst] += 1
+
+    def total_weight(self):
+        return sum(weight for node in self.nodes.values() for weight in node.outedges.values())
