@@ -54,27 +54,6 @@ class Title:
         elem = title.elem.find(xpath)
         return elem and Section(elem)
 
-    def find_sections_fulltext(self, text):
-        for sec_elem in title.getroot().iter(util.prefix_tag('section')):
-            sec_id = elem.attrib.get('identifier')
-            if not sec_id or not util.is_uscode_id(sec_id):
-                continue
-
-            if util.contains_text(sec_elem, text):
-                yield Section(sec_elem)
-
-    def find_sections_boolean(self, query):
-        expr = boolean.parse(query, simplify=True)
-        for sec_elem in title.getroot().iter(util.prefix_tag('section')):
-            sec_id = elem.attrib.get('identifier')
-            if not sec_id or not util.is_uscode_id(sec_id):
-                continue
-
-            boolean_map = {sym: util.booleanify(util.contains_text(sec_elem, sym.obj))
-                           for sym in expr.symbols}
-            if expr.subs(boolean_map, simplify=True) == boolean.TRUE:
-                yield Section(sec_elem)
-
 
 # wrapper of the whole US Code with search functions
 class USCode:
@@ -84,7 +63,7 @@ class USCode:
 
         logging.info("Loading data...")
         for filename in os.listdir(xml_dir):
-            title_num = filename[3:-4].strip('0')
+            title_num = filename[3:-4].lstrip('0').lower()
             tree = ET.parse(os.path.join(xml_dir, filename))
             self.titles[title_num] = Title(tree.getroot())
 
@@ -94,11 +73,3 @@ class USCode:
     def find_section(self, title_num, section_num):
         title = self.titles.get(title_num)
         return title and title.find_section(section_num)
-
-    def find_sections_fulltext(self, text):
-        return itertools.chain.from_iterable(title.find_sections_fulltext(text)
-                                             for title in self.titles.values())
-
-    def find_sections_boolean(self, query):
-        return itertools.chain.from_iterable(title.find_sections_boolean(query)
-                                             for title in self.titles.values())
