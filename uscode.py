@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 import logging
 import os
 import itertools
@@ -5,14 +6,24 @@ import xml.etree.ElementTree as ET
 import util
 
 
-# wrapper of a section element
-class Section:
+class USCodeElement(ABC):
     def __init__(self, elem):
         self.elem = elem
 
-    def get_attrib(self, key):
+    def attrib(self, key):
         return self.elem.attrib.get(key)
 
+    @property
+    def id(self):
+        return self.attrib('identifier')
+
+    @property
+    @abstractmethod
+    def location(self):
+        pass
+
+# wrapper of a section element
+class Section(USCodeElement):
     def to_string(self):
         str_builder = []
         for child in self.elem.iter():
@@ -26,20 +37,11 @@ class Section:
 
     @property
     def location(self):
-        sec_id = self.get_attrib('identifier')
-        if not sec_id:
-            return None
-        parts = sec_id.split('/')
+        parts = self.id.split('/')
         return parts[-2][1:], parts[-1][1:]
 
 
-class Title:
-    def __init__(self, elem):
-        self.elem = elem
-
-    def get_attrib(self, key):
-        return self.elem.attrib.get(key)
-
+class Title(USCodeElement):
     def sections(self):
         sec_elems = self.elem.iter(util.prefix_tag('section'))
         for elem in sec_elems:
@@ -49,25 +51,31 @@ class Title:
 
     def find_section(self, section_num):
         xpath = './/{}[@identifier="{}/s{}"]'.format(util.prefix_tag('section'),
-                                                     self.get_attrib('identifier'),
+                                                     self.attrib('identifier'),
                                                      section_num)
         elem = title.elem.find(xpath)
         return elem and Section(elem)
+
+    @property
+    def location(self):
+        parts = self.id.split('/')
+        return parts[-1][1:],
 
 
 # wrapper of the whole US Code with search functions
 class USCode:
     def __init__(self, xml_dir):
-        self.xml_dir = xml_dir
         self.titles = {}
+        self.parse_xml(xml_dir)
 
+    def parse_xml(self, xml_dir):
         logging.info("Loading data...")
         for filename in os.listdir(xml_dir):
             title_num = filename[3:-4].lstrip('0').lower()
             tree = ET.parse(os.path.join(xml_dir, filename))
             self.titles[title_num] = Title(tree.getroot())
 
-    def all_sections(self):
+    def sections(self):
         return itertools.chain.from_iterable(title.sections() for title in self.titles.values())
 
     def find_section(self, title_num, section_num):

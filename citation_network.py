@@ -1,5 +1,4 @@
 import logging
-from collections import defaultdict
 from uscode import Section, USCode
 import util
 
@@ -8,7 +7,7 @@ class CitationNode:
     def __init__(self, section):
         self.section = section
         self.indegree = 0
-        self.outedges = defaultdict(int)
+        self.outedges = {}
 
     @property
     def outdegree(self):
@@ -30,7 +29,7 @@ class CitationNetwork:
     def _init_nodes(self, sections):
         logging.info("Intializing nodes...")
         for sec in sections:
-            sec_id = sec.get_attrib('identifier')
+            sec_id = sec.attrib('identifier')
             if not (sec_id and sec_id.startswith('/us/usc')):
                 continue
             self.nodes[sec_id] = CitationNode(sec)
@@ -45,13 +44,14 @@ class CitationNetwork:
 
                 ref_id = util.id_level(ref_id, 5) # trim the identifier to the section level
                 if ref_id in self.nodes:
-                    self._add_edge(node, self.nodes[ref_id])
+                    self._update_edge(node, self.nodes[ref_id])
 
     def total_weight(self):
         return sum(weight for node in self.nodes.values() for weight in node.outedges.values())
 
-    def _add_edge(self, src, dst):
+    def _update_edge(self, src, dst, weight=1):
         if dst not in src.outedges:
             self.n_edges += 1
             dst.indegree += 1
-        src.outedges[dst] += 1
+            src.outedges[dst] = 0
+        src.outedges[dst] += weight
