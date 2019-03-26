@@ -3,6 +3,7 @@ import logging
 import os
 import itertools
 import xml.etree.ElementTree as ET
+
 import util
 
 
@@ -66,14 +67,7 @@ class Title(USCodeElement):
 class USCode:
     def __init__(self, xml_dir):
         self.titles = {}
-        self.parse_xml(xml_dir)
-
-    def parse_xml(self, xml_dir):
-        logging.info("Loading data...")
-        for filename in os.listdir(xml_dir):
-            title_num = filename[3:-4].lstrip('0').lower()
-            tree = ET.parse(os.path.join(xml_dir, filename))
-            self.titles[title_num] = Title(tree.getroot())
+        self._load_xml(xml_dir)
 
     def sections(self):
         return itertools.chain.from_iterable(title.sections() for title in self.titles.values())
@@ -81,3 +75,10 @@ class USCode:
     def find_section(self, title_num, section_num):
         title = self.titles.get(title_num)
         return title and title.find_section(section_num)
+
+    def _load_xml(self, xml_dir):
+        logging.info("Loading data...")
+        for filename in os.listdir(xml_dir):
+            title_num = filename[3:-4].lstrip('0').lower()
+            tree = ET.parse(os.path.join(xml_dir, filename))
+            self.titles[title_num] = Title(tree.getroot())

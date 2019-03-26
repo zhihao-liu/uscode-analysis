@@ -1,5 +1,6 @@
 import itertools
 from boolean import BooleanAlgebra
+
 from uscode import Section
 from citation_network import CitationNetwork
 import util
@@ -18,13 +19,13 @@ class Search:
         self.network = citation_network or CitationNetwork(uscode.all_sections())
 
     def fulltext(self, text):
-        results = [(sec, self.network.nodes[sec.attrib('identifier')].indegree)
+        results = [(sec, self.network.graph.in_degree(sec.id))
                    for sec in self._search_all_fulltext(text)]
         self._rank_results(results)
         return results
 
     def boolean(self, query):
-        results = [(sec, self.network.nodes[sec.attrib('identifier')].indegree)
+        results = [(sec, self.network.graph.in_degree(sec.id))
                    for sec in self._search_all_boolean(query)]
         self._rank_results(results)
         return results
