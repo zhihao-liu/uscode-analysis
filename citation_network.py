@@ -14,7 +14,6 @@ class CitationNetwork:
         return sum(w for _, _, w in self.graph.edges.data('weight'))
 
     def _build_network(self, sections):
-        logging.info("Building network...")
         for sec in sections:
             self.graph.add_node(sec.id)
             for ref_elem in sec.elem.iter(util.prefix_tag('ref')):

@@ -1,5 +1,6 @@
 import itertools
 from boolean import BooleanAlgebra
+import networkx as nx
 
 from uscode import Section
 from citation_network import CitationNetwork
@@ -13,39 +14,42 @@ def booleanify(val):
     return boolean.TRUE if val else boolean.FALSE
 
 
-class Search:
-    def __init__(self, uscode, citation_network=None):
+class SearchEngine:
+    def __init__(self, uscode):
         self.uscode = uscode
-        self.network = citation_network or CitationNetwork(uscode.all_sections())
+        self.citation_network = CitationNetwork(uscode.sections())
+        self.pagerank = nx.pagerank(self.citation_network.graph)
 
-    def fulltext(self, text):
-        results = [(sec, self.network.graph.in_degree(sec.id))
-                   for sec in self._search_all_fulltext(text)]
-        self._rank_results(results)
+    def search(self, query, mode='fulltext', rank='pagerank'):
+        search_title = None
+        if mode == 'fulltext':
+            search_title = self._search_title_fulltext
+        elif mode == 'boolean':
+            search_title = self._search_title_boolean
+        else:
+            raise Exception("Illegal mode")
+
+        rank_results = None
+        if rank == 'pagerank':
+            rank_results = self._rank_results_with_pagerank
+        elif rank == 'indegree':
+            rank_results = self._rank_results_by_indegree
+        else:
+            raise Exception("Illegal rank")
+
+        results = (search_title(title, query) for title in self.uscode.titles.values())
+        results = list(itertools.chain.from_iterable(results))
+        rank_results(results)
         return results
-
-    def boolean(self, query):
-        results = [(sec, self.network.graph.in_degree(sec.id))
-                   for sec in self._search_all_boolean(query)]
-        self._rank_results(results)
-        return results
-
-    def _search_all_fulltext(self, text):
-        return itertools.chain.from_iterable(self._search_title_fulltext(title, text)
-                                             for title in self.uscode.titles.values())
-
-    def _search_all_boolean(self, query):
-        return itertools.chain.from_iterable(self._search_title_boolean(title, query)
-                                             for title in self.uscode.titles.values())
 
     @staticmethod
-    def _search_title_fulltext(title, text):
+    def _search_title_fulltext(title, query):
         for sec_elem in title.elem.iter(util.prefix_tag('section')):
             sec_id = sec_elem.attrib.get('identifier')
             if not sec_id or not util.is_uscode_id(sec_id):
                 continue
 
-            if util.contains_text(sec_elem, text):
+            if util.contains_text(sec_elem, query):
                 yield Section(sec_elem)
 
     @staticmethod
@@ -61,6 +65,8 @@ class Search:
             if expr.subs(boolean_map, simplify=True) == boolean.TRUE:
                 yield Section(sec_elem)
 
-    @staticmethod
-    def _rank_results(results):
-        results.sort(key=lambda x: x[1], reverse=True)
+    def _rank_results_by_indegree(self, results):
+        results.sort(key=lambda x: self.citation_network.graph.in_degree(x.id), reverse=True)
+
+    def _rank_results_with_pagerank(self, results):
+        results.sort(key=lambda x: self.pagerank[x.id], reverse=True)

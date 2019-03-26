@@ -77,7 +77,6 @@ class USCode:
         return title and title.find_section(section_num)
 
     def _load_xml(self, xml_dir):
-        logging.info("Loading data...")
         for filename in os.listdir(xml_dir):
             title_num = filename[3:-4].lstrip('0').lower()
             tree = ET.parse(os.path.join(xml_dir, filename))
