@@ -6,7 +6,7 @@ from xml.etree import ElementTree as ET
 import nltk
 from nltk.tokenize import word_tokenize
 
-import util
+from lib import util
 
 
 nltk.download('punkt', quiet=True)
@@ -67,7 +67,10 @@ def preprocess_xml(dir_path):
 
                 ref_counter[ref_id] += 1
 
-            sections[sec_id] = {'id': sec_id, 'text': text, 'terms': term_counter, 'refs': ref_counter}
+            sections[sec_id] = {'id': sec_id,
+                                'text': text,
+                                'terms': term_counter,
+                                'refs': ref_counter}
 
     return usc
 
