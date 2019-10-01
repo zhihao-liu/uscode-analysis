@@ -1,3 +1,6 @@
+import sys
+sys.path.append('../src')
+
 import argparse
 import os
 from collections import Counter
@@ -7,7 +10,7 @@ import nltk
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 
-from lib import util
+import util
 
 
 nltk.download('punkt', quiet=True)
