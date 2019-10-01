@@ -5,23 +5,14 @@ import json
 from xml.etree import ElementTree as ET
 import nltk
 from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
 
 from lib import util
 
 
 nltk.download('punkt', quiet=True)
-
-
-def section_to_string(elem):
-    str_builder = []
-    for child in elem.iter():
-        if str_builder and util.is_newline_tag(child.tag):
-            str_builder.append('\n')
-        if child.text:
-            str_builder.append(child.text)
-            str_builder.append(' ')
-
-    return ''.join(str_builder)
+nltk.download('stopwords', quiet=True)
+stop_words = set(stopwords.words('english'))
 
 
 def preprocess_xml(dir_path):
@@ -55,8 +46,11 @@ def preprocess_xml(dir_path):
                 continue
             sec_id = util.format_section_id(sec_id)
 
-            text = section_to_string(sec_elem)
-            term_counter = Counter(util.transform_word(w) for w in word_tokenize(text))
+            sec_text = util.stringify_section(sec_elem)
+
+            terms = (util.transform_word(w)
+                     for w in word_tokenize(sec_text) if w not in stop_words)
+            term_counter = Counter(terms)
 
             ref_counter = Counter()
             for ref_elem in sec_elem.iter(util.prefix_tag('ref')):
@@ -68,7 +62,7 @@ def preprocess_xml(dir_path):
                 ref_counter[ref_id] += 1
 
             sections[sec_id] = {'id': sec_id,
-                                'text': text,
+                                'text': sec_text,
                                 'terms': term_counter,
                                 'refs': ref_counter}
 
