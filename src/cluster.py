@@ -48,7 +48,7 @@ class Clustering:
         n_observations = np.arange(2, model.children_.shape[0] + 2)
         linkage_matrix = np.column_stack([model.children_, distance, n_observations]).astype(float)
 
-        dendrogram(linkage_matrix)
+        dendrogram(linkage_matrix, labels=self.elem_ids)
 
     @staticmethod
     def build_distance_matrix(elems, dist_func):
