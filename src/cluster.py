@@ -1,22 +1,24 @@
 import itertools
 import functools
 import numpy as np
+import matplotlib.pyplot as plt
 from sklearn.cluster import AgglomerativeClustering
+from scipy.cluster.hierarchy import dendrogram
 
 import util
 
 
 def vectorization_distance(section1, section2):
-    return util.dict_distance(section1.terms, section2.terms)
+    return util.dict_distance(section1.terms_, section2.terms_)
 
 
 class CitationSinks:
-    def __init__(self, sections, network):
-        self.sinks_from = {section: network.sinks_from(section.id) for section in sections}
+    def __init__(self, elems, network):
+        self.sinks_from = {elem.id: network.sinks_from(elem.id) for elem in elems}
 
     def distance(self, section1, section2):
-        sinks1 = self.sinks_from[section1]
-        sinks2 = self.sinks_from[section2]
+        sinks1 = self.sinks_from[section1.id]
+        sinks2 = self.sinks_from[section2.id]
 
         n_shared = len(sinks1 & sinks2)
         n_total = len(sinks1) + len(sinks2) - n_shared
@@ -24,27 +26,37 @@ class CitationSinks:
 
 
 class Clustering:
-    def __init__(self, sections, dist_func):
-        self.section_ids = [sec.id for sec in sections]
-        self.dist_mat = self.build_distance_matrix(sections, dist_func)
+    def __init__(self, elems, dist_func):
+        self.elem_ids = [elem.id for elem in elems]
+        self.dist_mat = self.build_distance_matrix(elems, dist_func)
 
     def get_clusters(self, n_clusters):
-        clustering = AgglomerativeClustering(n_clusters=n_clusters,
-                                             affinity='precomputed',
-                                             linkage='average')
-        clustering.fit(self.dist_mat)
-
-        clusters = util.group_by_label(self.section_ids, clustering.labels_)
+        model = AgglomerativeClustering(n_clusters=n_clusters,
+                                        affinity='precomputed',
+                                        linkage='average')
+        model.fit(self.dist_mat)
+        clusters = util.group_by_label(self.elem_ids, model.labels_)
         return list(clusters.values())
 
-    @staticmethod
-    def build_distance_matrix(sections, dist_func):
-        n_sections = len(sections)
-        dist_mat = np.zeros((n_sections, n_sections))
+    def plot_dendrogram(self):
+        model = AgglomerativeClustering(compute_full_tree=True,
+                                        affinity='precomputed',
+                                        linkage='average')
+        model.fit(self.dist_mat)
 
-        for (i, sec1), (j, sec2) in itertools.combinations(enumerate(sections), 2):
-            dist = dist_func(sec1, sec2)
-            dist_mat[i][j] = dist
-            dist_mat[j][i] = dist
+        distance = np.arange(model.children_.shape[0])
+        n_observations = np.arange(2, model.children_.shape[0] + 2)
+        linkage_matrix = np.column_stack([model.children_, distance, n_observations]).astype(float)
+
+        dendrogram(linkage_matrix)
+
+    @staticmethod
+    def build_distance_matrix(elems, dist_func):
+        n_elems = len(elems)
+        dist_mat = np.zeros((n_elems, n_elems))
+
+        for (i, elem1), (j, elem2) in itertools.combinations(enumerate(elems), 2):
+            dist = dist_func(elem1, elem2)
+            dist_mat[i][j] = dist_mat[j][i] = dist
 
         return dist_mat

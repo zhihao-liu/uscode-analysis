@@ -12,23 +12,31 @@ class USCodeElement:
 
 
 class Section(USCodeElement):
-    def __init__(self, section_dict):
-        self.id = section_dict['id']
-        self.text = section_dict['text']
-        self.terms = section_dict['terms']
-        self.refs = section_dict['refs']
+    def __init__(self, section_id, text, terms, refs):
+        self.id = section_id
+        self.text = text
+        self.terms_ = terms
+        self.refs_ = refs
+
+    @classmethod
+    def from_dict(cls, section_dict):
+        return cls(section_dict['id'],
+                   section_dict['text'],
+                   section_dict['terms'],
+                   section_dict['refs'])
 
 
 class Title(USCodeElement):
-    def __init__(self, title_dict):
-        self.id = title_dict['id']
-        self.sections_ = {sec_id: Section(sec_dict)
-                         for sec_id, sec_dict in title_dict['sections'].items()}
+    def __init__(self, title_id, sections):
+        self.id = title_id
+        self.sections_ = {sec.id: sec for sec in sections}
+
+    @classmethod
+    def from_dict(cls, title_dict):
+        sections = (Section.from_dict(sec_dict) for sec_dict in title_dict['sections'].values())
+        return cls(title_dict['id'], sections)
 
     def sections(self):
-        return list(self.iter_sections())
-
-    def iter_sections(self):
         return self.sections_.values()
 
     def section(self, section_id):
@@ -36,27 +44,25 @@ class Title(USCodeElement):
 
 
 class USCode:
-    def __init__(self, usc_dict):
-        self.titles_ = {title_id: Title(title_dict)
-                        for title_id, title_dict in usc_dict['titles'].items()}
+    def __init__(self, titles):
+        self.titles_ = {title.id: title for title in titles}
+
+    @classmethod
+    def from_dict(cls, usc_dict):
+        titles = (Title.from_dict(title_dict) for title_dict in usc_dict['titles'].values())
+        return cls(titles)
 
     @classmethod
     def from_json(cls, path):
         with open(path) as f:
             usc_dict = json.load(f)
-        return cls(usc_dict)
+        return USCode.from_dict(usc_dict)
 
     def titles(self):
-        return list(self.iter_titles())
-
-    def iter_titles(self):
         return self.titles_.values()
 
     def sections(self):
-        return list(self.iter_sections())
-
-    def iter_sections(self):
-        return itertools.chain.from_iterable(title.iter_sections() for title in self.iter_titles())
+        return itertools.chain.from_iterable(title.sections() for title in self.titles())
 
     def title(self, title_id):
         return self.titles_[title_id]
