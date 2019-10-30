@@ -3,7 +3,7 @@ import functools
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.cluster import AgglomerativeClustering
-from scipy.cluster.hierarchy import dendrogram
+from scipy.cluster.hierarchy import dendrogram, linkage
 
 import util
 
@@ -44,10 +44,9 @@ class Clustering:
                                         linkage='average')
         model.fit(self.dist_mat)
 
-        distance = np.arange(model.children_.shape[0])
-        n_observations = np.arange(2, model.children_.shape[0] + 2)
-        linkage_matrix = np.column_stack([model.children_, distance, n_observations]).astype(float)
-
+        index_pairs = itertools.combinations(range(len(self.elem_ids)), 2)
+        flat_dist = np.array([self.dist_mat[i][j] for i, j in index_pairs])
+        linkage_matrix = linkage(flat_dist, 'average')
         dendrogram(linkage_matrix, labels=self.elem_ids)
 
     @staticmethod
