@@ -8,31 +8,37 @@ from scipy.cluster.hierarchy import dendrogram, linkage
 import util
 
 
-def vectorization_distance(section1, section2):
-    return util.dict_distance(section1.terms_, section2.terms_)
+def iou_distance(i, u):
+    return 1 - i / max(1, u)
 
 
-def citation_distance(section1, section2, weighted=True):
-    cites1, cites2 = section1.refs_, section2.refs_
-    if not weighted:
-        cites1, cites2 = cites1.keys(), cites2.keys()
+def vectorization_distance(elem1, elem2):
+    return util.dict_distance(elem1.terms_, elem2.terms_)
 
-    n_shared = len(cites1 & cites2)
-    n_total = len(cites1 | cites2)
-    return 1 - n_shared / max(1, n_total)
+
+def citation_distance(elem1, elem2):
+    n_inter = sum((elem1.refs_ & elem2.refs_).values())
+    n_union = sum((elem1.refs_ | elem2.refs_).values())
+    return iou_distance(n_inter, n_union)
+
+
+def unweighted_citation_distance(elem1, elem2):
+    n_inter = len(elem1.refs_.keys() & elem2.refs_.keys())
+    n_union = len(elem1.refs_.keys() | elem2.refs_.keys())
+    return iou_distance(n_inter, n_union)
 
 
 class CitationSinks:
     def __init__(self, elems, network):
         self.sinks_from = {elem.id: network.sinks_from(elem.id) for elem in elems}
 
-    def distance(self, section1, section2):
-        sinks1 = self.sinks_from[section1.id]
-        sinks2 = self.sinks_from[section2.id]
+    def distance(self, elem1, elem2):
+        sinks1 = self.sinks_from[elem1.id]
+        sinks2 = self.sinks_from[elem2.id]
 
-        n_shared = len(sinks1 & sinks2)
-        n_total = len(sinks1 | sinks2)
-        return 1 - n_shared / max(1, n_total)
+        n_inter = len(sinks1 & sinks2)
+        n_union = len(sinks1 | sinks2)
+        return iou_distance(n_inter, n_union)
 
 
 class Clustering:

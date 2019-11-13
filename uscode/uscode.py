@@ -30,7 +30,14 @@ class Section(USCodeElement):
 class Title(USCodeElement):
     def __init__(self, title_id, sections):
         self.id = title_id
-        self.sections_ = {sec.id: sec for sec in sections}
+
+        self.sections_ = {}
+        self.refs_ = Counter()
+        self.terms_ = Counter()
+        for section in sections:
+            self.sections_[section.id] = section
+            self.refs_.update(section.refs_)
+            self.terms_.update(section.terms_)
 
     @classmethod
     def from_dict(cls, title_dict):
