@@ -1,5 +1,6 @@
 import os
 import itertools
+from collections import Counter
 import json
 
 import util
@@ -22,8 +23,8 @@ class Section(USCodeElement):
     def from_dict(cls, section_dict):
         return cls(section_dict['id'],
                    section_dict['text'],
-                   section_dict['terms'],
-                   section_dict['refs'])
+                   Counter(section_dict['terms']),
+                   Counter(section_dict['refs']))
 
 
 class Title(USCodeElement):

@@ -12,6 +12,16 @@ def vectorization_distance(section1, section2):
     return util.dict_distance(section1.terms_, section2.terms_)
 
 
+def citation_distance(section1, section2, weighted=True):
+    cites1, cites2 = section1.refs_, section2.refs_
+    if not weighted:
+        cites1, cites2 = cites1.keys(), cites2.keys()
+
+    n_shared = len(cites1 & cites2)
+    n_total = len(cites1 | cites2)
+    return 1 - n_shared / max(1, n_total)
+
+
 class CitationSinks:
     def __init__(self, elems, network):
         self.sinks_from = {elem.id: network.sinks_from(elem.id) for elem in elems}
@@ -21,7 +31,7 @@ class CitationSinks:
         sinks2 = self.sinks_from[section2.id]
 
         n_shared = len(sinks1 & sinks2)
-        n_total = len(sinks1) + len(sinks2) - n_shared
+        n_total = len(sinks1 | sinks2)
         return 1 - n_shared / max(1, n_total)
 
 
