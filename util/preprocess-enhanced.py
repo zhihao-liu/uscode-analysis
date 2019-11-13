@@ -1,6 +1,3 @@
-import sys
-sys.path.append('../src')
-
 import argparse
 import os
 from collections import Counter
@@ -9,8 +6,7 @@ from xml.etree import ElementTree as ET
 import nltk
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
-
-import util
+from uscode import util
 
 
 nltk.download('punkt', quiet=True)
@@ -23,16 +19,17 @@ def preprocess_xml(dir_path):
     usc = {'titles': titles}
 
     for filename in os.listdir(dir_path):
+        if (os.path.splitext(filename)[1] != '.xml'):
+            continue
         print("Processing {}...".format(filename))
-
         root = ET.parse(os.path.join(dir_path, filename)).getroot()
 
         xml_main = root.find(util.prefix_tag('main'))
-        if not xml_main:
+        if xml_main is None:
             continue
 
         title_elem = xml_main.find(util.prefix_tag('title'))
-        if not title_elem:
+        if title_elem is None:
             continue
 
         title_id = title_elem.attrib.get('identifier')
@@ -51,8 +48,7 @@ def preprocess_xml(dir_path):
 
             sec_text = util.stringify_section(sec_elem)
 
-            terms = (util.transform_word(w)
-                     for w in word_tokenize(sec_text) if w not in stop_words)
+            terms = (util.transform_word(w) for w in word_tokenize(sec_text) if w not in stop_words)
             term_counter = Counter(terms)
 
             ref_counter = Counter()
@@ -61,7 +57,6 @@ def preprocess_xml(dir_path):
                 if not ref_id or not util.is_uscode_id(ref_id):
                     continue
                 ref_id = util.format_section_id(ref_id)
-
                 ref_counter[ref_id] += 1
 
             sections[sec_id] = {'id': sec_id,
@@ -74,11 +69,11 @@ def preprocess_xml(dir_path):
 
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument('-i', '--input-dir', dest='input_dir_path', required=True)
-    arg_parser.add_argument('-o', '--output', dest='output_path', required=True)
+    arg_parser.add_argument('input_dir')
+    arg_parser.add_argument('-o', '--output_file', required=True)
 
     args = arg_parser.parse_args()
 
-    usc_dict = preprocess_xml(args.input_dir_path)
-    with open(args.output_path, 'x') as f:
+    usc_dict = preprocess_xml(args.input_dir)
+    with open(args.output_file, 'x') as f:
         json.dump(usc_dict, f)
