@@ -15,10 +15,6 @@ def extract_tag(tag):
     return tag[len(xml_prefix):]
 
 
-def is_newline_tag(tag):
-    return extract_tag(tag) in new_line_tags
-
-
 def is_uscode_id(elem_id):
     return elem_id.startswith('/us/usc')
 
@@ -28,11 +24,11 @@ def trim_id(elem_id, start, end):
 
 
 def format_title_id(elem_id):
-    return trim_id(elem_id, 3, 4)
+    return trim_id(elem_id, 3, 4).lower()
 
 
 def format_section_id(elem_id):
-    return trim_id(elem_id, 3, 5)
+    return trim_id(elem_id, 3, 5).lower()
 
 
 def extract_title_id(section_id):

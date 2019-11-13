@@ -1,6 +1,8 @@
 import argparse
 import os
+import re
 from collections import Counter
+import itertools
 import json
 from xml.etree import ElementTree as ET
 import nltk
@@ -12,6 +14,8 @@ from uscode import util
 nltk.download('punkt', quiet=True)
 nltk.download('stopwords', quiet=True)
 stop_words = set(stopwords.words('english'))
+
+ref_pattern = re.compile('section ([0-9]\\w*)(?: of title ([0-9]\\w*)| of this title)', re.IGNORECASE)
 
 
 def preprocess_xml(dir_path):
@@ -52,12 +56,20 @@ def preprocess_xml(dir_path):
             term_counter = Counter(terms)
 
             ref_counter = Counter()
-            for ref_elem in sec_elem.iter(util.prefix_tag('ref')):
-                ref_id = ref_elem.attrib.get('href')
-                if not ref_id or not util.is_uscode_id(ref_id):
-                    continue
-                ref_id = util.format_section_id(ref_id)
-                ref_counter[ref_id] += 1
+            for elem in sec_elem.iter():
+                if util.extract_tag(elem.tag) == 'ref':
+                    ref_id = elem.attrib.get('href')
+                    if not ref_id or not util.is_uscode_id(ref_id):
+                        continue
+                    ref_id = util.format_section_id(ref_id)
+                    ref_counter[ref_id] += 1
+                else:
+                    matches = itertools.chain.from_iterable(ref_pattern.findall(text) for text in [elem.text, elem.tail] if text)
+                    for s, t in matches:
+                        s = 's' + s.split('(')[0]
+                        t = 't' + t if t else title_id
+                        ref_id = (t + '/' + s).lower()
+                        ref_counter[ref_id] += 1
 
             sections[sec_id] = {'id': sec_id,
                                 'text': sec_text,
