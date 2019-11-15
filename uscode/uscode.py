@@ -12,15 +12,9 @@ class USCodeElement:
         self.terms = terms
         self.refs = refs
 
-    def accumulate(self, iter_elements):
-        elements = {}
-        terms = Counter()
-        refs = Counter()
-        for elem in iter_elements:
-            elements[elem.id] = elem
-            terms.update(elem.terms)
-            refs.update(elem.refs)
-        return elements, terms, refs
+    def update_features(self, subelem):
+        self.terms.update(subelem.terms)
+        self.refs.update(subelem.refs)
 
 
 class Section(USCodeElement):
@@ -37,33 +31,15 @@ class Section(USCodeElement):
 
 
 class Chapter(USCodeElement):
-    def __init__(self, chap_id, iter_sections):
-        sections, terms, refs = self.accumulate(iter_sections)
-        super().__init__(id, terms, refs)
-        self.sections = sections
-
-    @classmethod
-    def from_dict(cls, chap_dict):
-        chap_id = chap_dict['id']
-        iter_sections = (Section.from_dict(sec_dict) for sec_dict in chap_dict['sections'].values())
-        return cls(chap_id, iter_sections)
-
-    def iter_sections(self):
-        return self.sections.values()
+    def __init__(self, chap_id):
+        super().__init__(chap_id, Counter(), Counter())
 
 
 class Title(USCodeElement):
-    def __init__(self, title_id, iter_chapters):
-        chapters, terms, refs = self.accumulate(iter_chapters)
-        super().__init__(title_id, terms, refs)
-        self.chapters = chapters
-        self.sections = {sec.id: sec for chap in chapters.values() for sec in chap.iter_sections()}
-
-    @classmethod
-    def from_dict(cls, title_dict):
-        title_id = title_dict['id']
-        iter_chapters = (Chapter.from_dict(chap_dict) for chap_dict in title_dict['chapters'].values())
-        return cls(title_id, iter_chapters)
+    def __init__(self, title_id):
+        super().__init__(title_id, Counter(), Counter())
+        self.chapters = {}
+        self.sections = {}
 
     def iter_sections(self):
         return self.sections.values()
@@ -73,19 +49,31 @@ class Title(USCodeElement):
 
 
 class USCode:
-    def __init__(self, titles):
-        self.titles = {title.id: title for title in titles}
-
-    @classmethod
-    def from_dict(cls, usc_dict):
-        titles = (Title.from_dict(title_dict) for title_dict in usc_dict['titles'].values())
-        return cls(titles)
+    def __init__(self):
+        self.titles = {}
 
     @classmethod
     def from_json(cls, path):
+        usc = USCode()
         with open(path) as f:
-            usc_dict = json.load(f)
-        return USCode.from_dict(usc_dict)
+            usc_obj = json.load(f)
+
+        for title_obj in usc_obj['titles'].values():
+            title_id = title_obj['id']
+            usc.titles[title_id] = title = Title(title_id)
+
+            for chap_obj in title_obj['chapters'].values():
+                chap_id = chap_obj['id']
+                title.chapters[chap_id] = chap = Chapter(chap_id)
+
+                for sec_obj in chap_obj['sections'].values():
+                    sec_id = sec_obj['id']
+                    title.sections[sec_id] = sec = Section(sec_id, sec_obj['terms'], sec_obj['refs'], sec_obj['text'])
+
+                    title.update_features(sec)
+                    chap.update_features(sec)
+
+        return usc
 
     def iter_titles(self):
         return self.titles.values()
