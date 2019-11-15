@@ -2,41 +2,12 @@ import nltk
 from nltk.stem import WordNetLemmatizer
 
 
-xml_prefix = '{http://xml.house.gov/schemas/uslm/1.0}'
 nltk.download('wordnet', quiet=True)
 lemmatize = WordNetLemmatizer().lemmatize
 
 
-def prefix_tag(tag):
-    return xml_prefix + tag
-
-
-def extract_tag(tag):
-    return tag[len(xml_prefix):]
-
-
-def is_uscode_id(elem_id):
-    return elem_id.startswith('/us/usc')
-
-
-def trim_id(elem_id, start, end):
-    return '/'.join(elem_id.split('/')[start:end])
-
-
-def format_title_id(elem_id):
-    return trim_id(elem_id, 3, 4).lower()
-
-
-def format_section_id(elem_id):
-    return trim_id(elem_id, 3, 5).lower()
-
-
 def extract_title_id(section_id):
     return section_id.split('/')[0]
-
-
-def stringify_section(elem):
-    return ''.join(elem.itertext())
 
 
 def transform_word(word):

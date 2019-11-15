@@ -7,53 +7,74 @@ import util
 
 
 class USCodeElement:
-    @property
-    def location(self):
-        return tuple(div[1:] for div in self.id.split('/'))
+    def __init__(self, id, terms, refs):
+        self.id = id
+        self.terms = terms
+        self.refs = refs
+
+    def accumulate(self, iter_elements):
+        elements = {}
+        terms = Counter()
+        refs = Counter()
+        for elem in iter_elements:
+            elements[elem.id] = elem
+            terms.update(elem.terms)
+            refs.update(elem.refs)
+        return elements, terms, refs
 
 
 class Section(USCodeElement):
-    def __init__(self, section_id, text, terms, refs):
-        self.id = section_id
+    def __init__(self, sec_id, terms, refs, text):
+        super().__init__(sec_id, terms, refs)
         self.text = text
-        self.terms_ = terms
-        self.refs_ = refs
 
     @classmethod
-    def from_dict(cls, section_dict):
-        return cls(section_dict['id'],
-                   section_dict['text'],
-                   Counter(section_dict['terms']),
-                   Counter(section_dict['refs']))
+    def from_dict(cls, sec_dict):
+        return cls(sec_dict['id'],
+                   Counter(sec_dict['terms']),
+                   Counter(sec_dict['refs']),
+                   sec_dict['text'])
+
+
+class Chapter(USCodeElement):
+    def __init__(self, chap_id, iter_sections):
+        sections, terms, refs = self.accumulate(iter_sections)
+        super().__init__(id, terms, refs)
+        self.sections = sections
+
+    @classmethod
+    def from_dict(cls, chap_dict):
+        chap_id = chap_dict['id']
+        iter_sections = (Section.from_dict(sec_dict) for sec_dict in chap_dict['sections'].values())
+        return cls(chap_id, iter_sections)
+
+    def iter_sections(self):
+        return self.sections.values()
 
 
 class Title(USCodeElement):
-    def __init__(self, title_id, sections):
-        self.id = title_id
-
-        self.sections_ = {}
-        self.refs_ = Counter()
-        self.terms_ = Counter()
-        for section in sections:
-            self.sections_[section.id] = section
-            self.refs_.update(section.refs_)
-            self.terms_.update(section.terms_)
+    def __init__(self, title_id, iter_chapters):
+        chapters, terms, refs = self.accumulate(iter_chapters)
+        super().__init__(title_id, terms, refs)
+        self.chapters = chapters
+        self.sections = {sec.id: sec for chap in chapters.values() for sec in chap.iter_sections()}
 
     @classmethod
     def from_dict(cls, title_dict):
-        sections = (Section.from_dict(sec_dict) for sec_dict in title_dict['sections'].values())
-        return cls(title_dict['id'], sections)
+        title_id = title_dict['id']
+        iter_chapters = (Chapter.from_dict(chap_dict) for chap_dict in title_dict['chapters'].values())
+        return cls(title_id, iter_chapters)
 
-    def sections(self):
-        return self.sections_.values()
+    def iter_sections(self):
+        return self.sections.values()
 
-    def section(self, section_id):
-        return self.sections_[section_id]
+    def iter_chapters(self):
+        return self.chapters.values()
 
 
 class USCode:
     def __init__(self, titles):
-        self.titles_ = {title.id: title for title in titles}
+        self.titles = {title.id: title for title in titles}
 
     @classmethod
     def from_dict(cls, usc_dict):
@@ -66,18 +87,18 @@ class USCode:
             usc_dict = json.load(f)
         return USCode.from_dict(usc_dict)
 
-    def titles(self):
-        return self.titles_.values()
+    def iter_titles(self):
+        return self.titles.values()
 
-    def sections(self):
-        return itertools.chain.from_iterable(title.sections() for title in self.titles())
+    def iter_chapters(self):
+        return itertools.chain.from_iterable(title.iter_chapters() for title in self.iter_titles())
 
-    def title(self, title_id):
-        return self.titles_[title_id]
+    def iter_sections(self):
+        return itertools.chain.from_iterable(title.iter_sections() for title in self.iter_titles())
 
-    def section(self, section_id):
-        title_id = extract_title_id(section_id)
-        return self.title(title_id).section(section_id)
+    def get_section(self, sec_id):
+        title_id = util.extract_title_id(sec_id)
+        return self.titles[title_id].sections[sec_id]
 
     def find_section(self, title_num, section_num):
         try:

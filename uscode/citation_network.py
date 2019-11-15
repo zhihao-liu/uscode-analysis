@@ -5,9 +5,9 @@ class CitationNetwork(nx.DiGraph):
     def __init__(self, uscode):
         super().__init__()
 
-        for sec in uscode.sections():
+        for sec in uscode.iter_sections():
             self.add_node(sec.id)
-            for ref_id, ref_count in sec.refs_.items():
+            for ref_id, ref_count in sec.refs.items():
                 self.add_edge(sec.id, ref_id, weight=ref_count)
 
     def sinks_from(self, node):
