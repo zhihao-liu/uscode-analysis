@@ -13,18 +13,18 @@ def iou_distance(i, u):
 
 
 def vectorization_distance(elem1, elem2):
-    return util.dict_distance(elem1.terms_, elem2.terms_)
+    return util.dict_distance(elem1.terms, elem2.terms)
 
 
 def citation_distance(elem1, elem2):
-    n_inter = sum((elem1.refs_ & elem2.refs_).values())
-    n_union = sum((elem1.refs_ | elem2.refs_).values())
+    n_inter = sum((elem1.refs & elem2.refs).values())
+    n_union = sum((elem1.refs | elem2.refs).values())
     return iou_distance(n_inter, n_union)
 
 
 def unweighted_citation_distance(elem1, elem2):
-    n_inter = len(elem1.refs_.keys() & elem2.refs_.keys())
-    n_union = len(elem1.refs_.keys() | elem2.refs_.keys())
+    n_inter = len(elem1.refs.keys() & elem2.refs.keys())
+    n_union = len(elem1.refs.keys() | elem2.refs.keys())
     return iou_distance(n_inter, n_union)
 
 

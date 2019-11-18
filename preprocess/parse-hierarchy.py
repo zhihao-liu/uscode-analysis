@@ -51,7 +51,10 @@ def preprocess_xml(dir_path):
         print("Processing {}...".format(filename))
         root = ET.parse(os.path.join(dir_path, filename)).getroot()
 
-        title_elem = next(root.iter(prefix_tag('title')), None)
+        xml_main = root.find(prefix_tag('main'))
+        if xml_main is None: continue
+
+        title_elem = xml_main.find(prefix_tag('title'))
         if title_elem is None: continue
         title_id = get_uscode_id(title_elem)
         if not title_id: continue
