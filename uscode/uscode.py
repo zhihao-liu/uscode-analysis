@@ -7,8 +7,8 @@ import util
 
 
 class USCodeElement:
-    def __init__(self, id, terms, refs):
-        self.id = id
+    def __init__(self, elem_id, terms, refs):
+        self.id = elem_id
         self.terms = terms
         self.refs = refs
 
@@ -68,7 +68,7 @@ class USCode:
 
                 for sec_obj in chap_obj['sections'].values():
                     sec_id = sec_obj['id']
-                    title.sections[sec_id] = sec = Section(sec_id, sec_obj['terms'], sec_obj['refs'], sec_obj['text'])
+                    title.sections[sec_id] = sec = Section.from_dict(sec_obj)
 
                     title.update_features(sec)
                     chap.update_features(sec)
