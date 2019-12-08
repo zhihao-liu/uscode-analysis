@@ -17,10 +17,3 @@ def transform_word(word):
 def dict_distance(dict1, dict2):
     keys = dict1.keys() & dict1.keys()
     return sum((dict1.get(k, 0) - dict2.get(k, 0)) ** 2 for k in keys) ** 0.5
-
-
-def group_by_label(items, labels):
-    groups = {}
-    for item, label in zip(items, labels):
-        groups.setdefault(label, []).append(item)
-    return groups

@@ -2,8 +2,7 @@ import itertools
 import functools
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.cluster import AgglomerativeClustering
-from scipy.cluster.hierarchy import dendrogram, linkage
+from scipy.cluster import hierarchy
 
 import util
 
@@ -42,36 +41,26 @@ class CitationSinks:
 
 
 class Clustering:
-    def __init__(self, elems, dist_func):
+    def __init__(self, elems, dist_func, method='average'):
         self.elem_ids = [elem.id for elem in elems]
-        self.dist_mat = self.build_distance_matrix(elems, dist_func)
+        dist = self.condensed_distance_matrix(elems, dist_func)
+        self.linkage_matrix = hierarchy.linkage(dist, method)
+
+    def get_labels(self, n_clusters):
+        tree_cut = hierarchy.cut_tree(self.linkage_matrix, n_clusters=n_clusters)
+        return tree_cut.reshape(-1)
 
     def get_clusters(self, n_clusters):
-        model = AgglomerativeClustering(n_clusters=n_clusters,
-                                        affinity='precomputed',
-                                        linkage='average')
-        model.fit(self.dist_mat)
-        clusters = util.group_by_label(self.elem_ids, model.labels_)
-        return list(clusters.values())
+        clusters = [[] for _ in range(n_clusters)]
+        labels = self.get_labels(n_clusters)
+        for elem_id, label in zip(self.elem_ids, labels):
+            labels[label].append(elem_id)
+        return clusters
 
     def plot_dendrogram(self):
-        model = AgglomerativeClustering(compute_full_tree=True,
-                                        affinity='precomputed',
-                                        linkage='average')
-        model.fit(self.dist_mat)
-
-        index_pairs = itertools.combinations(range(len(self.elem_ids)), 2)
-        flat_dist = np.array([self.dist_mat[i][j] for i, j in index_pairs])
-        linkage_matrix = linkage(flat_dist, 'average')
-        dendrogram(linkage_matrix, labels=self.elem_ids)
+        hierarchy.dendrogram(self.linkage_matrix, labels=self.elem_ids)
 
     @staticmethod
-    def build_distance_matrix(elems, dist_func):
-        n_elems = len(elems)
-        dist_mat = np.zeros((n_elems, n_elems))
-
-        for (i, elem1), (j, elem2) in itertools.combinations(enumerate(elems), 2):
-            dist = dist_func(elem1, elem2)
-            dist_mat[i][j] = dist_mat[j][i] = dist
-
-        return dist_mat
+    def condensed_distance_matrix(elems, dist_func):
+        elem_pairs = itertools.combinations(elems, 2)
+        return np.array([dist_func(a, b) for a, b in elem_pairs])
