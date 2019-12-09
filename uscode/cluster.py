@@ -3,6 +3,7 @@ import functools
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.cluster import hierarchy
+from sklearn.metrics import fowlkes_mallows_score
 
 import util
 
@@ -46,6 +47,10 @@ class Clustering:
         dist = self.condensed_distance_matrix(elems, dist_func)
         self.linkage_matrix = hierarchy.linkage(dist, method)
 
+    @property
+    def n_samples(self):
+        return len(self.elem_ids)
+
     def get_labels(self, n_clusters):
         tree_cut = hierarchy.cut_tree(self.linkage_matrix, n_clusters=n_clusters)
         return tree_cut.reshape(-1)
@@ -64,3 +69,22 @@ class Clustering:
     def condensed_distance_matrix(elems, dist_func):
         elem_pairs = itertools.combinations(elems, 2)
         return np.array([dist_func(a, b) for a, b in elem_pairs])
+
+
+def single_fm_index(clustering1, clustering2, n_clusters):
+    labels1 = clustering1.get_labels(n_clusters)
+    labels2 = clustering2.get_labels(n_clusters)
+    return fowlkes_mallows_score(labels1, labels2)
+
+
+def all_fm_indices(clustering1, clustering2):
+    if clustering1.n_samples != clustering2.n_samples:
+        raise ValueError("Compared clusterings must have the same number of samples")
+    return [single_fm_index(clustering1, clustering2, n) for n in range(2, clustering1.n_samples)]
+
+
+def fm_index(clustering1, clustering2, n_clusters=-1):
+    if n_clusters == -1:
+        return all_fm_indices(clustering1, clustering2)
+    else:
+        return single_fm_index(clustering1, clustering2, n_clusters)
